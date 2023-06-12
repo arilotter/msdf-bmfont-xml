@@ -394,6 +394,6 @@ function generateImage (opt, callback) {
   
   subproc.stdin.write(shapeDesc);
   subproc.stdin.write('\n');
-  subproc.stdin.destroy();
+  subproc.stdin.end();
 }
 
