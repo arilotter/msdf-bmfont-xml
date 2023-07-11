@@ -18,6 +18,7 @@ args
   .arguments('<font_file>')
   .description('Creates a BMFont compatible bitmap font of signed distance fields from a font file')
   .option('-f, --output-type <format>', 'font file format: xml(default) | json | txt', /^(xml|json|txt)$/i, 'xml')
+  .option('    --fallback <font-file>', 'a fallback font to use characters from if the passed font doesnt have them')
   .option('-o, --filename <atlas_path>', 'filename of font textures (defaut: font-face) font filename always set to font-face name')
   .option('-s, --font-size <fontSize>', 'font size for generated textures', 42)
   .option('-i, --charset-file <charset>', 'user-specified charactors from text-file', fileExistValidate)
@@ -82,6 +83,8 @@ keys.forEach(key => {
     console.log(pad(key, padding) + ": Defined in [" + opt.reuse + "]");
   } else if (key === 'charsetFile' && typeof opt[key] === 'undefined') {
     console.log(pad(key, padding) + ": Unspecified, fallback to ASC-II");
+  } else if (key === 'fallback' && typeof opt[key] === 'undefined') {
+    console.log(pad(key, padding) + ": Unspecified, not using a fallback font.");
   } else console.log(pad(key, padding) + ": " + opt[key]);
 });
 console.log("========================================");
