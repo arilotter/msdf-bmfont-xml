@@ -17,6 +17,7 @@ const controlChars = ['\n', '\r', '\t'];
 
 const binaryLookup = {
   darwin: 'msdfgen.osx',
+  darwin_arm64: 'msdfgen.osx',
   win32: 'msdfgen.exe',
   linux: 'msdfgen.linux',
   linux_arm64: 'msdfgen.linux'
@@ -31,6 +32,7 @@ module.exports = generateBMFont;
  * @param {Object} opt - Options object for generating bitmap font (Optional) :
  *            outputType : font file format Avaliable: xml(default), json, txt
  *            filename : filename of both font file and font textures
+ *            fallback : Path or Buffer for a fallback ttf/otf/woff font to use characters from if the font at fontPath doesn't have them
  *            fontSize : font size for generated textures (default 42)
  *            charset : charset in generated font, could be array or string (default is Western)
  *            textureWidth : Width of generated textures (default 512)
@@ -52,9 +54,11 @@ function generateBMFont (fontPath, opt, callback) {
     opt = {};
   }
 
-  const binName = process.arch === "arm64" ? binaryLookup[`${process.platform}_${process.arch}`] : binaryLookup[process.platform];
+  const lookupKey = process.arch === "arm64" ?`${process.platform}_${process.arch}` : process.platform;
 
-  assert.ok(binName, `No msdfgen binary for platform ${process.platform}.`);
+  const binName = binaryLookup[lookupKey];
+
+  assert.ok(binName, `No msdfgen binary for platform ${lookupKey}.`);
   assert.ok(fontPath, 'must specify a font path');
   assert.ok(typeof fontPath === 'string' || fontPath instanceof Buffer, 'font must be string path or Buffer');
   assert.ok(opt.filename || !(fontPath instanceof Buffer), 'must specify filename if font is a Buffer');
@@ -109,10 +113,19 @@ function generateBMFont (fontPath, opt, callback) {
   const font = typeof fontPath === 'string'
     ? opentype.loadSync(fontPath)
     : opentype.parse(utils.bufferToArrayBuffer(fontPath));
+  const fallbackFont = opt.fallback
+    ? typeof opt.fallback === 'string'
+      ? opentype.loadSync(opt.fallback)
+      : opentype.parse(utils.bufferToArrayBuffer(opt.fallback))
+    : undefined;
 
   if (font.outlinesFormat !== 'truetype' && font.outlinesFormat !== 'cff') {
     throw new TypeError('must specify a truetype font (ttf, otf, woff)');
   }
+  if (fallbackFont && (fallbackFont.outlinesFormat !== 'truetype' && fallbackFont.outlinesFormat !== 'cff')) {
+    throw new TypeError('must specify a truetype font for fallback (ttf, otf, woff)');
+  }
+
   const packer = new MaxRectsPacker(textureWidth, textureHeight, texturePadding, {
     smart: smartSize,
     pot: pot,
@@ -158,9 +171,10 @@ function generateBMFont (fontPath, opt, callback) {
   bar.start(charset.length, 0);
 
   mapLimit(charset, 15, (char, cb) => {
+    const fontForThisChar = !fontHasChar(font, char) && fallbackFont && fontHasChar(fallbackFont,char) ? fallbackFont : font
     generateImage({
       binaryPath,
-      font,
+      font: fontForThisChar,
       char,
       fontSize,
       fieldType,
@@ -391,6 +405,9 @@ function generateImage (opt, callback) {
   
   subproc.stdin.write(shapeDesc);
   subproc.stdin.write('\n');
-  subproc.stdin.destroy();
+  subproc.stdin.end();
 }
 
+function fontHasChar(font, c) {
+  return font.encoding.charToGlyphIndex(c) > 0
+}
