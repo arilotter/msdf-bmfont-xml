@@ -54,7 +54,7 @@ function generateBMFont (fontPath, opt, callback) {
     opt = {};
   }
 
-  const lookupKey = process.arch === "arm64" ?`${process.platform}_${process.arch}` : binaryLookup[process.platform];
+  const lookupKey = process.arch === "arm64" ?`${process.platform}_${process.arch}` : process.platform;
 
   const binName = binaryLookup[lookupKey];
 
